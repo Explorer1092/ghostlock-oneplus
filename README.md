@@ -22,6 +22,7 @@ The `pselect6` syscall copies `fd_set` data onto the kernel stack. When combined
 |--------|-----|--------|------------|-------|
 | OnePlus Ace 6T (PLR110) | SM8845 | 6.12.38 | android16-5 | 0 |
 | OnePlus 15 (CPH2745/2747/2749) | SM8850 | 6.12.23 | android16-5 | 0 |
+| OnePlus 15 (PLK110) | SM8850 | 6.12.58 | android16-6 | 0 |
 | Xiaomi 17 (pudding) | SM8850 | 6.12.23 / 6.12.69 | android16-5 / android16-6 | 0 |
 | OnePlus 13 (IN2060) | SM8750 | 6.6.89 | android15-8 | -2 |
 | OPPO Pad 4 Pro | SM8750 | 6.6.89 | android15-8 | -2 |
@@ -32,6 +33,9 @@ The `pselect6` syscall copies `fd_set` data onto the kernel stack. When combined
 |--------|-----|--------|-------|
 | OnePlus 15T (PLZ110) | SM8845 | 6.12.38 | Same kernel as Ace 6T |
 | OPPO Reno10 Pro+ (CPH2521) | SM8475 | 5.10.236 | 5.10 compact waiter, waiter word=0 |
+| Sony Xperia 1 IV (nagara) | SM8450 | 5.10.218 | 5.10 compact waiter, waiter word=0 |
+| OPPO Find X9 Pro (PLG110) | D9400 | 6.12.23 | MediaTek, android16-5 |
+| Vivo X200 Ultra (V2454A) | SM8750 | 6.6.89 | C ashmem, traditional hooks |
 | Vivo X Fold3 Pro (PD2337) | SM8650 | 6.1.124 | 6.1 compact waiter, waiter word=3 |
 | Vivo T4 | SM8650 | 6.1.145 | 6.1 compact waiter, waiter word=3 |
 
@@ -42,6 +46,7 @@ The pselect stack overlay requires the freed `rt_mutex_waiter` to land within th
 | Device | SoC | Kernel | Root Cause |
 |--------|-----|--------|------------|
 | OPPO Find X9 Ultra | SM8750 | 6.12.58 | PGO eliminates `do_futex` → waiter word=14 |
+| OnePlus 15 (PLK110) | SM8850 | 6.12.69 | PGO inlines `do_futex` → waiter word=20 |
 | OnePlus 12 | SM8650 | 6.1.141 | PGO inlines `do_futex` → waiter word=13/19 |
 | OnePlus 13R / Ace 5 | SM8650 | 6.1.x | OPLUS 6.1: waiter word=13 |
 | realme RMX5070 | SM6650 | 6.1.141 | OPLUS 6.1: waiter word=13 |
@@ -51,6 +56,7 @@ The pselect stack overlay requires the freed `rt_mutex_waiter` to land within th
 | OPPO PKW110 | — | 5.15.180 | `do_futex` frame 0x140 → waiter word=-29 |
 | iQOO Z9 5G | — | 5.15.178 | `do_futex` frame too large |
 | CPH2763 (OPPO) | — | 6.1.115 | OPLUS 6.1: PGO inlined, waiter word=24 |
+| iQOO 12 | SM8650 | 6.1.145 | 6.1: waiter word=9, task/lock in zeroed area |
 
 > **Note on 6.1 feasibility:** OPLUS 6.1 kernels are consistently infeasible due to PGO inlining `do_futex`. However, some non-OPLUS 6.1 kernels (vivo) retain the standard call chain and are feasible (vivo T4, X Fold3 Pro). Feasibility must be checked per-device.
 
@@ -110,10 +116,12 @@ The waiter position depends on the call chain depth:
 | Pattern | Call Chain | Feasible |
 |---------|-----------|----------|
 | android16-5 (6.12) | sys_futex → do_futex → fwrpi | ✅ waiter word=2 |
+| android16-6 (6.12.58) | sys_futex → do_futex → fwrpi | ✅ waiter word=2 |
+| android16-6 (6.12.69 OPLUS) | sys_futex → fwrpi (PGO inlined) | ❌ waiter word=20 |
+| android16-6 (X9 Ultra) | sys_futex → fwrpi (PGO inlined) | ❌ waiter word=14 |
 | android15-8 (6.6) | sys_futex → do_futex → fwrpi | ✅ waiter word=2 (SHIFT=-2) |
 | vivo 6.1 | sys_futex → do_futex → fwrpi | ✅ waiter word=3 |
 | OPLUS 6.1 | sys_futex → fwrpi (PGO inlined) | ❌ waiter word=13+ |
-| android16-6 (X9 Ultra) | sys_futex → fwrpi (PGO inlined) | ❌ waiter word=14 |
 | 5.10 OPLUS | sys_futex → do_futex → fwrpi | ✅ waiter word=0 |
 
 ### kernel_phys_load
